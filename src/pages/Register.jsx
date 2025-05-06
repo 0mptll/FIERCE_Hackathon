@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Phone, MapPin, Briefcase, Mail, Lock } from 'lucide-react';
+import axios from 'axios';
+
+const BASE_URL = 'http://localhost:8080/api/auth'; // Backend API URL
 
 const Register = () => {
   const navigate = useNavigate();
@@ -21,14 +24,8 @@ const Register = () => {
   const [error, setError] = useState('');
 
   const occupations = [
-    'Farmer',
-    'Daily Wage Laborer',
-    'Shop Owner',
-    'Street Vendor',
-    'Artisan',
-    'Driver',
-    'Domestic Worker',
-    'Other'
+    'Farmer', 'Daily Wage Laborer', 'Shop Owner', 'Street Vendor',
+    'Artisan', 'Driver', 'Domestic Worker', 'Other'
   ];
 
   const handleChange = (e) => {
@@ -39,7 +36,8 @@ const Register = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validation
@@ -58,12 +56,21 @@ const Register = () => {
       return;
     }
 
-    // For demo purposes, store in localStorage
-    localStorage.setItem('user', JSON.stringify({
-      fullName: formData.fullName,
-      phone: formData.phone
-    }));
-    
+    try {
+      // Send registration data to backend
+      const response = await axios.post(`${BASE_URL}/register`, formData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Redirect user upon successful registration
+      if (response.data) {
+        navigate('/login');
+      }
+    } catch (err) {
+      setError(err.response?.data || 'Registration failed. Please try again.');
+    }
     navigate('/calculate-score');
   };
 

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Phone, Lock } from 'lucide-react';
+import axios from 'axios';
+
+const BASE_URL = 'http://localhost:8080/api/auth'; // Backend API URL
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,7 +21,7 @@ const Login = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Basic validation
@@ -32,9 +35,19 @@ const Login = () => {
       return;
     }
 
-    // For demo purposes, simulate login
-    localStorage.setItem('user', JSON.stringify({ phone: formData.phone }));
-    navigate('/calculate-score');
+    try {
+      const response = await axios.post(`${BASE_URL}/login`, {
+        phone: formData.phone,
+        password: formData.password
+      });
+
+      if (response.data) {
+        localStorage.setItem('user', JSON.stringify(response.data)); // Store user session
+        navigate('/dashboard'); // Redirect after login
+      }
+    } catch (err) {
+      setError(err.response?.data || 'Login failed. Please try again.');
+    }
   };
 
   return (
@@ -45,7 +58,7 @@ const Login = () => {
             <div className="card-body p-4">
               <div className="text-center mb-4">
                 <h2 className="fw-bold mb-1">Welcome Back</h2>
-                <p className="text-muted">Login to access your FIERCE Finance account</p>
+                <p className="text-muted">Login to access your account</p>
               </div>
 
               {error && (
