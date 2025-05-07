@@ -6,49 +6,50 @@ import axios from 'axios';
 const BASE_URL = 'http://localhost:8080/api/auth'; // Backend API URL
 
 const Login = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    phone: '',
-    password: ''
-  });
-  const [error, setError] = useState('');
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        phone: '',
+        password: ''
+    });
+    const [error, setError] = useState('');
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!formData.phone || !formData.password) {
-      setError('Please fill in all fields');
-      return;
-    }
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-    if (formData.phone.length !== 10) {
-      setError('Phone number must be 10 digits');
-      return;
-    }
+        // Basic validation
+        if (!formData.phone || !formData.password) {
+            setError('Please fill in all fields');
+            return;
+        }
 
-    try {
-      const response = await axios.post(`${BASE_URL}/login`, {
-        phone: formData.phone,
-        password: formData.password
-      });
+        if (formData.phone.length !== 10) {
+            setError('Phone number must be 10 digits');
+            return;
+        }
 
-      if (response.data) {
-        localStorage.setItem('user', JSON.stringify(response.data)); // Store user session
-        navigate('/dashboard'); // Redirect after login
-      }
-    } catch (err) {
-      setError(err.response?.data || 'Login failed. Please try again.');
-    }
-  };
+        try {
+            const response = await axios.post(`${BASE_URL}/login`, {
+                phone: formData.phone,
+                password: formData.password
+            });
+
+            if (response.data) {
+                console.log('Login successful, user data:', response.data); // ADD THIS LINE
+                localStorage.setItem('user', JSON.stringify(response.data)); // Store user session
+                navigate('/dashboard'); // Redirect after login
+            }
+        } catch (err) {
+            setError(err.response?.data || 'Login failed. Please try again.');
+        }
+    };
 
   return (
     <div className="container py-5">
