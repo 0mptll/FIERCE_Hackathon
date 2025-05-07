@@ -18,7 +18,7 @@ const AvailableLoans = () => {
   }, [score]);
 
   const generateLoanOffers = (score) => {
-    // Base loan offers
+    // Base loan offers with additional banks
     let loanOffers = [
       {
         id: 1,
@@ -69,13 +69,65 @@ const AvailableLoans = () => {
         minScore: 750,
         type: "premium",
         features: ["No collateral required", "Instant approval", "Flexible repayment", "Zero pre-closure fees", "Top-up loan option", "Preferential rates for existing customers"]
+      },
+      // Adding new banks
+      {
+        id: 6,
+        bank: "Union Rural Bank",
+        maxAmount: 150000,
+        interest: 10.0,
+        tenure: [12, 24, 36],
+        minScore: 600,
+        type: "standard",
+        features: ["Quick processing", "Flexible EMI options", "Minimal documentation"]
+      },
+      {
+        id: 7,
+        bank: "Rural Credit Co-Op",
+        maxAmount: 250000,
+        interest: 12.0,
+        tenure: [6, 12, 18, 24],
+        minScore: 650,
+        type: "standard",
+        features: ["Easy documentation", "Low processing fee", "Pre-closure flexibility"]
+      },
+      {
+        id: 8,
+        bank: "SBI Rural Loans",
+        maxAmount: 400000,
+        interest: 9.75,
+        tenure: [12, 24, 36, 48],
+        minScore: 700,
+        type: "premium",
+        features: ["No collateral", "Quick approval", "Zero processing fee", "Top-up loan option"]
+      },
+      {
+        id: 9,
+        bank: "Bank of India - Rural Division",
+        maxAmount: 600000,
+        interest: 8.25,
+        tenure: [12, 24, 36, 48, 60],
+        minScore: 750,
+        type: "premium",
+        features: ["Low-interest rates", "Flexible repayment options", "No hidden charges"]
+      },
+      {
+        id: 10,
+        bank: "Punjab Rural Bank",
+        maxAmount: 350000,
+        interest: 11.0,
+        tenure: [12, 24, 36],
+        minScore: 650,
+        type: "standard",
+        features: ["Flexible repayment", "Quick approval", "Minimal documentation", "Pre-closure option"]
       }
     ];
-
+  
     // Filter loans based on score
     const availableLoans = loanOffers.filter(loan => score >= loan.minScore);
     setLoans(availableLoans);
   };
+  
 
   if (!score) {
     return <div className="text-center py-5">Loading...</div>;

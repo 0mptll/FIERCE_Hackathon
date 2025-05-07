@@ -33,6 +33,12 @@ const LoanApplication = () => {
     agreeTerms: false
   });
   
+  // Form validation states
+  const [formErrors, setFormErrors] = useState({
+    step1: false,
+    step2: false
+  });
+  
   // Load loan details from location state or fetch based on ID
   useEffect(() => {
     if (location.state) {
@@ -64,7 +70,37 @@ const LoanApplication = () => {
     }));
   };
 
+  // Validate form fields for each step
+  const validateStep1 = () => {
+    if (!loanAmount || !loanTenure || !formData.purpose) {
+      setFormErrors(prev => ({ ...prev, step1: true }));
+      return false;
+    }
+    setFormErrors(prev => ({ ...prev, step1: false }));
+    return true;
+  };
+
+  const validateStep2 = () => {
+    const requiredFields = [
+      'fullName', 'gender', 'dob', 'mobile', 'email', 
+      'address', 'city', 'state', 'pincode', 
+      'occupation', 'employerName', 'monthlyIncome', 
+      'panNumber', 'aadhaarNumber'
+    ];
+    
+    const isValid = requiredFields.every(field => formData[field].trim() !== '');
+    
+    setFormErrors(prev => ({ ...prev, step2: !isValid }));
+    return isValid;
+  };
+
   const handleNext = () => {
+    if (activeStep === 1) {
+      if (!validateStep1()) return;
+    } else if (activeStep === 2) {
+      if (!validateStep2()) return;
+    }
+    
     setActiveStep(prev => prev + 1);
     window.scrollTo(0, 0);
   };
@@ -76,6 +112,10 @@ const LoanApplication = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Final validation before submission
+    if (!formData.agreeTerms) return;
+    
     setFormSubmitted(true);
     
     // In a real app, this would submit the application to the backend
@@ -148,11 +188,17 @@ const LoanApplication = () => {
                   </div>
                 </div>
                 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                   {/* Step 1: Loan Details */}
                   {activeStep === 1 && (
                     <div>
                       <h4 className="mb-4">Loan Details</h4>
+                      
+                      {formErrors.step1 && (
+                        <div className="alert alert-danger mb-4">
+                          <strong>Please complete all required fields before proceeding.</strong>
+                        </div>
+                      )}
                       
                       <div className="alert alert-light d-flex mb-4">
                         <div className="me-3">
@@ -169,7 +215,7 @@ const LoanApplication = () => {
                       
                       <div className="row mb-4">
                         <div className="col-md-6">
-                          <label htmlFor="loanAmount" className="form-label">Loan Amount (₹)</label>
+                          <label htmlFor="loanAmount" className="form-label">Loan Amount (₹) <span className="text-danger">*</span></label>
                           <input 
                             type="range"
                             className="form-range mb-2"
@@ -179,6 +225,7 @@ const LoanApplication = () => {
                             step="5000"
                             value={loanAmount}
                             onChange={(e) => setLoanAmount(e.target.value)}
+                            required
                           />
                           <div className="d-flex justify-content-between">
                             <small>₹10,000</small>
@@ -189,14 +236,15 @@ const LoanApplication = () => {
                               onChange={(e) => setLoanAmount(e.target.value)}
                               min="10000"
                               max={loan.maxAmount}
+                              required
                             />
                             <small>₹{loan.maxAmount.toLocaleString()}</small>
                           </div>
                         </div>
                         <div className="col-md-6">
-                          <label htmlFor="loanTenure" className="form-label">Loan Tenure (months)</label>
+                          <label htmlFor="loanTenure" className="form-label">Loan Tenure (months) <span className="text-danger">*</span></label>
                           <select 
-                            className="form-select" 
+                            className={`form-select ${!loanTenure && 'is-invalid'}`}
                             id="loanTenure"
                             value={loanTenure}
                             onChange={(e) => setLoanTenure(e.target.value)}
@@ -207,6 +255,7 @@ const LoanApplication = () => {
                               <option key={tenure} value={tenure}>{tenure} months</option>
                             ))}
                           </select>
+                          {!loanTenure && <div className="invalid-feedback">Please select a loan tenure</div>}
                         </div>
                       </div>
                       
@@ -239,9 +288,9 @@ const LoanApplication = () => {
                       </div>
                       
                       <div className="mb-4">
-                        <label htmlFor="purpose" className="form-label">Purpose of Loan</label>
+                        <label htmlFor="purpose" className="form-label">Purpose of Loan <span className="text-danger">*</span></label>
                         <select 
-                          className="form-select" 
+                          className={`form-select ${!formData.purpose && 'is-invalid'}`}
                           id="purpose"
                           name="purpose"
                           value={formData.purpose}
@@ -257,6 +306,7 @@ const LoanApplication = () => {
                           <option value="wedding">Wedding</option>
                           <option value="other">Other</option>
                         </select>
+                        {!formData.purpose && <div className="invalid-feedback">Please select a purpose for the loan</div>}
                       </div>
                       
                       <div className="d-flex justify-content-end mt-4">
@@ -264,7 +314,6 @@ const LoanApplication = () => {
                           type="button" 
                           className="btn btn-primary px-4"
                           onClick={handleNext}
-                          disabled={!loanAmount || !loanTenure || !formData.purpose}
                         >
                           Next
                         </button>
@@ -277,26 +326,33 @@ const LoanApplication = () => {
                     <div>
                       <h4 className="mb-4">Personal Details</h4>
                       
+                      {formErrors.step2 && (
+                        <div className="alert alert-danger mb-4">
+                          <strong>Please complete all required fields before proceeding.</strong>
+                        </div>
+                      )}
+                      
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="fullName" className="form-label">Full Name</label>
+                            <label htmlFor="fullName" className="form-label">Full Name <span className="text-danger">*</span></label>
                             <input 
                               type="text" 
-                              className="form-control" 
+                              className={`form-control ${!formData.fullName && 'is-invalid'}`}
                               id="fullName"
                               name="fullName"
                               value={formData.fullName}
                               onChange={handleInputChange}
                               required
                             />
+                            {!formData.fullName && <div className="invalid-feedback">Please enter your full name</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="gender" className="form-label">Gender</label>
+                            <label htmlFor="gender" className="form-label">Gender <span className="text-danger">*</span></label>
                             <select 
-                              className="form-select" 
+                              className={`form-select ${!formData.gender && 'is-invalid'}`}
                               id="gender"
                               name="gender"
                               value={formData.gender}
@@ -308,6 +364,7 @@ const LoanApplication = () => {
                               <option value="female">Female</option>
                               <option value="other">Other</option>
                             </select>
+                            {!formData.gender && <div className="invalid-feedback">Please select your gender</div>}
                           </div>
                         </div>
                       </div>
@@ -315,24 +372,25 @@ const LoanApplication = () => {
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="dob" className="form-label">Date of Birth</label>
+                            <label htmlFor="dob" className="form-label">Date of Birth <span className="text-danger">*</span></label>
                             <input 
                               type="date" 
-                              className="form-control" 
+                              className={`form-control ${!formData.dob && 'is-invalid'}`}
                               id="dob"
                               name="dob"
                               value={formData.dob}
                               onChange={handleInputChange}
                               required
                             />
+                            {!formData.dob && <div className="invalid-feedback">Please enter your date of birth</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="mobile" className="form-label">Mobile Number</label>
+                            <label htmlFor="mobile" className="form-label">Mobile Number <span className="text-danger">*</span></label>
                             <input 
                               type="tel" 
-                              className="form-control" 
+                              className={`form-control ${formData.mobile && !/^[0-9]{10}$/.test(formData.mobile) ? 'is-invalid' : ''}`}
                               id="mobile"
                               name="mobile"
                               value={formData.mobile}
@@ -341,27 +399,33 @@ const LoanApplication = () => {
                               placeholder="10-digit mobile number"
                               required
                             />
+                            {formData.mobile && !/^[0-9]{10}$/.test(formData.mobile) && 
+                              <div className="invalid-feedback">Please enter a valid 10-digit mobile number</div>
+                            }
                           </div>
                         </div>
                       </div>
                       
                       <div className="mb-3">
-                        <label htmlFor="email" className="form-label">Email Address</label>
+                        <label htmlFor="email" className="form-label">Email Address <span className="text-danger">*</span></label>
                         <input 
                           type="email" 
-                          className="form-control" 
+                          className={`form-control ${formData.email && !/\S+@\S+\.\S+/.test(formData.email) ? 'is-invalid' : ''}`}
                           id="email"
                           name="email"
                           value={formData.email}
                           onChange={handleInputChange}
                           required
                         />
+                        {formData.email && !/\S+@\S+\.\S+/.test(formData.email) && 
+                          <div className="invalid-feedback">Please enter a valid email address</div>
+                        }
                       </div>
                       
                       <div className="mb-3">
-                        <label htmlFor="address" className="form-label">Full Address</label>
+                        <label htmlFor="address" className="form-label">Full Address <span className="text-danger">*</span></label>
                         <textarea 
-                          className="form-control" 
+                          className={`form-control ${!formData.address && 'is-invalid'}`}
                           id="address"
                           name="address"
                           value={formData.address}
@@ -369,43 +433,46 @@ const LoanApplication = () => {
                           rows="2"
                           required
                         ></textarea>
+                        {!formData.address && <div className="invalid-feedback">Please enter your full address</div>}
                       </div>
                       
                       <div className="row mb-3">
                         <div className="col-md-4">
                           <div className="mb-3">
-                            <label htmlFor="city" className="form-label">City</label>
+                            <label htmlFor="city" className="form-label">City <span className="text-danger">*</span></label>
                             <input 
                               type="text" 
-                              className="form-control" 
+                              className={`form-control ${!formData.city && 'is-invalid'}`}
                               id="city"
                               name="city"
                               value={formData.city}
                               onChange={handleInputChange}
                               required
                             />
+                            {!formData.city && <div className="invalid-feedback">Please enter your city</div>}
                           </div>
                         </div>
                         <div className="col-md-4">
                           <div className="mb-3">
-                            <label htmlFor="state" className="form-label">State</label>
+                            <label htmlFor="state" className="form-label">State <span className="text-danger">*</span></label>
                             <input 
                               type="text" 
-                              className="form-control" 
+                              className={`form-control ${!formData.state && 'is-invalid'}`}
                               id="state"
                               name="state"
                               value={formData.state}
                               onChange={handleInputChange}
                               required
                             />
+                            {!formData.state && <div className="invalid-feedback">Please enter your state</div>}
                           </div>
                         </div>
                         <div className="col-md-4">
                           <div className="mb-3">
-                            <label htmlFor="pincode" className="form-label">PIN Code</label>
+                            <label htmlFor="pincode" className="form-label">PIN Code <span className="text-danger">*</span></label>
                             <input 
                               type="text" 
-                              className="form-control" 
+                              className={`form-control ${formData.pincode && !/^[0-9]{6}$/.test(formData.pincode) ? 'is-invalid' : ''}`}
                               id="pincode"
                               name="pincode"
                               value={formData.pincode}
@@ -414,6 +481,9 @@ const LoanApplication = () => {
                               placeholder="6-digit PIN code"
                               required
                             />
+                            {formData.pincode && !/^[0-9]{6}$/.test(formData.pincode) && 
+                              <div className="invalid-feedback">Please enter a valid 6-digit PIN code</div>
+                            }
                           </div>
                         </div>
                       </div>
@@ -421,9 +491,9 @@ const LoanApplication = () => {
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="occupation" className="form-label">Occupation</label>
+                            <label htmlFor="occupation" className="form-label">Occupation <span className="text-danger">*</span></label>
                             <select 
-                              className="form-select" 
+                              className={`form-select ${!formData.occupation && 'is-invalid'}`}
                               id="occupation"
                               name="occupation"
                               value={formData.occupation}
@@ -438,29 +508,31 @@ const LoanApplication = () => {
                               <option value="service">Service Worker</option>
                               <option value="other">Other</option>
                             </select>
+                            {!formData.occupation && <div className="invalid-feedback">Please select your occupation</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="employerName" className="form-label">Employer/Business Name</label>
+                            <label htmlFor="employerName" className="form-label">Employer/Business Name <span className="text-danger">*</span></label>
                             <input 
                               type="text" 
-                              className="form-control" 
+                              className={`form-control ${!formData.employerName && 'is-invalid'}`}
                               id="employerName"
                               name="employerName"
                               value={formData.employerName}
                               onChange={handleInputChange}
                               required
                             />
+                            {!formData.employerName && <div className="invalid-feedback">Please enter your employer/business name</div>}
                           </div>
                         </div>
                       </div>
                       
                       <div className="mb-3">
-                        <label htmlFor="monthlyIncome" className="form-label">Monthly Income (₹)</label>
+                        <label htmlFor="monthlyIncome" className="form-label">Monthly Income (₹) <span className="text-danger">*</span></label>
                         <input 
                           type="number" 
-                          className="form-control" 
+                          className={`form-control ${formData.monthlyIncome && Number(formData.monthlyIncome) < 5000 ? 'is-invalid' : ''}`}
                           id="monthlyIncome"
                           name="monthlyIncome"
                           value={formData.monthlyIncome}
@@ -468,15 +540,18 @@ const LoanApplication = () => {
                           min="5000"
                           required
                         />
+                        {formData.monthlyIncome && Number(formData.monthlyIncome) < 5000 && 
+                          <div className="invalid-feedback">Monthly income must be at least ₹5,000</div>
+                        }
                       </div>
                       
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="panNumber" className="form-label">PAN Card Number</label>
+                            <label htmlFor="panNumber" className="form-label">PAN Card Number <span className="text-danger">*</span></label>
                             <input 
                               type="text" 
-                              className="form-control" 
+                              className={`form-control ${formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) ? 'is-invalid' : ''}`}
                               id="panNumber"
                               name="panNumber"
                               value={formData.panNumber}
@@ -485,14 +560,17 @@ const LoanApplication = () => {
                               placeholder="e.g., ABCDE1234F"
                               required
                             />
+                            {formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) && 
+                              <div className="invalid-feedback">Please enter a valid PAN number (e.g., ABCDE1234F)</div>
+                            }
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
-                            <label htmlFor="aadhaarNumber" className="form-label">Aadhaar Number (last 4 digits)</label>
+                            <label htmlFor="aadhaarNumber" className="form-label">Aadhaar Number (last 4 digits) <span className="text-danger">*</span></label>
                             <input 
                               type="text" 
-                              className="form-control" 
+                              className={`form-control ${formData.aadhaarNumber && !/^[0-9]{4}$/.test(formData.aadhaarNumber) ? 'is-invalid' : ''}`}
                               id="aadhaarNumber"
                               name="aadhaarNumber"
                               value={formData.aadhaarNumber}
@@ -502,6 +580,9 @@ const LoanApplication = () => {
                               maxLength="4"
                               required
                             />
+                            {formData.aadhaarNumber && !/^[0-9]{4}$/.test(formData.aadhaarNumber) && 
+                              <div className="invalid-feedback">Please enter the last 4 digits of your Aadhaar number</div>
+                            }
                           </div>
                         </div>
                       </div>

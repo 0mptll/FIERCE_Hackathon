@@ -1,8 +1,72 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useContext, useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ScoreContext } from '../context/ScoreContext';
+
+
 import { TrendingUp, BarChart4, FileText, CreditCard } from 'lucide-react';
+import axios from 'axios'; // ✅ Add this
+
+
+const BASE_URL = 'http://localhost:8080/api/score';
+
 
 const Home = () => {
+
+
+    const { score, setScore, scoreFactors, setScoreFactors, updateTrigger } = useContext(ScoreContext);
+    const navigate = useNavigate();
+ 
+  useEffect(() => {
+    const fetchScoreData = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        let userId;
+ 
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          userId = user.id;
+          if (!userId) {
+            console.warn("Dashboard: User ID not found in local storage. Redirecting to login.");
+            navigate('/login');
+            return;
+          }
+        } else {
+          console.warn("Dashboard: No user logged in. Redirecting to login.");
+          navigate('/login');
+          return;
+        }
+ 
+        console.log('Dashboard: Fetching score for userId:', userId);
+        const response = await axios.get(`${BASE_URL}/${userId}`);
+        console.log("Dashboard: Fetched Score Data:", response.data);
+ 
+        if (response.data && response.data.score) {
+          setScore(response.data.score);
+          localStorage.setItem('score', response.data.score);
+          setScoreFactors({
+            income: response.data.monthlyIncome ?? 0,
+            spending: response.data.grocerySpending ?? 0,
+            savings: response.data.totalSavings ?? 0,
+            loans: response.data.loanRepayment ?? 0,
+            locationConsistency: response.data.rentOrEmi ?? 0,
+            transactionHistory: response.data.utilityBills ?? 0
+          });
+        //   generateLoanOffers(response.data.score);
+        } else {
+          navigate("/calculate-score");
+        }
+      } catch (error) {
+        console.error("Dashboard: Error fetching score data:", error);
+      }
+    };
+ 
+    if (score === null || updateTrigger > 0) {
+      fetchScoreData();
+    } else {
+    //   generateLoanOffers(score);
+    }
+ 
+  }, [score, updateTrigger, navigate, setScore, setScoreFactors]);
   return (
     <>
       <section className="hero-section">
@@ -23,15 +87,16 @@ const Home = () => {
               </div>
             </div>
             <div className="col-lg-6 d-none d-lg-block">
-              <img 
-                src="https://images.pexels.com/photos/6694543/pexels-photo-6694543.jpeg" 
-                alt="Rural workers using mobile banking" 
-                className="img-fluid rounded-3 shadow-lg" 
+              <img
+                src="https://images.pexels.com/photos/6694543/pexels-photo-6694543.jpeg"
+                alt="Rural workers using mobile banking"
+                className="img-fluid rounded-3 shadow-lg"
               />
             </div>
           </div>
         </div>
       </section>
+
 
       <section className="py-5" id="how-it-works">
         <div className="container">
@@ -39,7 +104,7 @@ const Home = () => {
             <h2 className="fw-bold">How It Works</h2>
             <p className="text-muted">Our AI-powered system evaluates your financial behavior to create a credit score</p>
           </div>
-          
+         
           <div className="row g-4">
             <div className="col-md-4">
               <div className="card h-100 border-0 shadow-sm">
@@ -54,7 +119,7 @@ const Home = () => {
                 </div>
               </div>
             </div>
-            
+           
             <div className="col-md-4">
               <div className="card h-100 border-0 shadow-sm">
                 <div className="card-body text-center p-4">
@@ -68,7 +133,7 @@ const Home = () => {
                 </div>
               </div>
             </div>
-            
+           
             <div className="col-md-4">
               <div className="card h-100 border-0 shadow-sm">
                 <div className="card-body text-center p-4">
@@ -85,7 +150,7 @@ const Home = () => {
           </div>
         </div>
       </section>
-      
+     
       <section className="py-5 bg-light">
         <div className="container">
           <div className="row align-items-center g-5">
@@ -173,5 +238,6 @@ const Home = () => {
     </>
   );
 };
+
 
 export default Home;

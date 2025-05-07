@@ -1,12 +1,19 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+
+
 import { ScoreContext } from '../context/ScoreContext';
 import { Calendar, DollarSign, Percent, ArrowRight } from 'lucide-react';
+const BASE_URL = 'http://localhost:8080/api/score';
+import axios from 'axios'; // ✅ Add this
+
+
+
 
 const LoanCalculator = () => {
   const location = useLocation();
-  const { score } = useContext(ScoreContext);
-  
+  const { score, setScore, scoreFactors, setScoreFactors, updateTrigger } = useContext(ScoreContext);  
   // Default values or values passed from another component
   const [loanAmount, setLoanAmount] = useState(100000);
   const [interestRate, setInterestRate] = useState(10.5);
@@ -14,7 +21,10 @@ const LoanCalculator = () => {
   const [emi, setEmi] = useState(0);
   const [totalInterest, setTotalInterest] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
-  
+  const navigate = useNavigate();
+
+
+ 
   // Set initial values from location state if available
   useEffect(() => {
     if (location.state) {
@@ -23,31 +33,83 @@ const LoanCalculator = () => {
       if (location.state.tenure) setLoanTenure(location.state.tenure);
     }
   }, [location]);
-  
+  useEffect(() => {
+    const fetchScoreData = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        let userId;
+ 
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          userId = user.id;
+          if (!userId) {
+            console.warn("Dashboard: User ID not found in local storage. Redirecting to login.");
+            navigate('/login');
+            return;
+          }
+        } else {
+          console.warn("Dashboard: No user logged in. Redirecting to login.");
+          navigate('/login');
+          return;
+        }
+ 
+        console.log('Dashboard: Fetching score for userId:', userId);
+        const response = await axios.get(`${BASE_URL}/${userId}`);
+        console.log("Dashboard: Fetched Score Data:", response.data);
+ 
+        if (response.data && response.data.score) {
+          setScore(response.data.score);
+          localStorage.setItem('score', response.data.score);
+          setScoreFactors({
+            income: response.data.monthlyIncome ?? 0,
+            spending: response.data.grocerySpending ?? 0,
+            savings: response.data.totalSavings ?? 0,
+            loans: response.data.loanRepayment ?? 0,
+            locationConsistency: response.data.rentOrEmi ?? 0,
+            transactionHistory: response.data.utilityBills ?? 0
+          });
+          // generateLoan/Offers(response.data.score);
+        } else {
+          navigate("/calculate-score");
+        }
+      } catch (error) {
+        console.error("Dashboard: Error fetching score data:", error);
+      }
+    };
+ 
+    if (score === null || updateTrigger > 0) {
+      fetchScoreData();
+    } else {
+      // generateLoanOffers(score);
+    }
+ 
+  }, [score, updateTrigger, navigate, setScore, setScoreFactors]);
+ 
   // Calculate EMI whenever input values change
   useEffect(() => {
     calculateEmi();
   }, [loanAmount, interestRate, loanTenure]);
-  
+ 
   // EMI calculation function
   const calculateEmi = () => {
     // Convert interest rate from annual to monthly
     const monthlyInterestRate = interestRate / 12 / 100;
-    
+   
     // Calculate EMI using formula: EMI = P * r * (1+r)^n / ((1+r)^n - 1)
-    const emiValue = loanAmount * monthlyInterestRate * 
-                      Math.pow(1 + monthlyInterestRate, loanTenure) / 
+    const emiValue = loanAmount * monthlyInterestRate *
+                      Math.pow(1 + monthlyInterestRate, loanTenure) /
                       (Math.pow(1 + monthlyInterestRate, loanTenure) - 1);
-    
+   
     // Calculate total amount and interest
     const totalAmountValue = emiValue * loanTenure;
     const totalInterestValue = totalAmountValue - loanAmount;
-    
+   
     // Update state with calculated values
     setEmi(isNaN(emiValue) ? 0 : emiValue);
     setTotalAmount(isNaN(totalAmountValue) ? 0 : totalAmountValue);
     setTotalInterest(isNaN(totalInterestValue) ? 0 : totalInterestValue);
   };
+
 
   // Suggested loan amounts based on score
   const getSuggestedMaxLoan = () => {
@@ -58,7 +120,7 @@ const LoanCalculator = () => {
     if (score >= 550) return 100000;
     return 50000;
   };
-  
+ 
   // Suggested interest rates based on score
   const getSuggestedInterestRate = () => {
     if (!score) return 10.5;
@@ -69,16 +131,17 @@ const LoanCalculator = () => {
     return 13.5;
   };
 
+
   return (
     <div className="container py-5">
       <h2 className="mb-4">Loan Calculator</h2>
-      
+     
       <div className="row g-4">
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm">
             <div className="card-body p-4">
               <h3 className="card-title mb-4">Calculate Your EMI</h3>
-              
+             
               <div className="mb-4">
                 <label htmlFor="loanAmount" className="form-label">
                   <DollarSign size={18} className="me-1" /> Loan Amount (₹)
@@ -106,7 +169,7 @@ const LoanCalculator = () => {
                   <small>₹{getSuggestedMaxLoan().toLocaleString()}</small>
                 </div>
               </div>
-              
+             
               <div className="mb-4">
                 <label htmlFor="interestRate" className="form-label">
                   <Percent size={18} className="me-1" /> Interest Rate (% p.a.)
@@ -140,7 +203,7 @@ const LoanCalculator = () => {
                   </small>
                 </div>
               </div>
-              
+             
               <div className="mb-4">
                 <label htmlFor="loanTenure" className="form-label">
                   <Calendar size={18} className="me-1" /> Loan Tenure (months)
@@ -169,10 +232,10 @@ const LoanCalculator = () => {
                   <small>60 months</small>
                 </div>
               </div>
-              
+             
               <div className="d-grid mt-4">
-                <Link 
-                  to="/available-loans" 
+                <Link
+                  to="/available-loans"
                   className="btn btn-primary"
                 >
                   View Available Loans <ArrowRight size={18} className="ms-1" />
@@ -181,12 +244,12 @@ const LoanCalculator = () => {
             </div>
           </div>
         </div>
-        
+       
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-body p-4">
               <h3 className="card-title mb-4">Loan Summary</h3>
-              
+             
               <div className="row g-3 text-center mb-4">
                 <div className="col-md-4">
                   <div className="p-3 bg-light rounded">
@@ -207,18 +270,18 @@ const LoanCalculator = () => {
                   </div>
                 </div>
               </div>
-              
+             
               <div className="mb-4">
                 <h5 className="mb-3">Payment Breakdown</h5>
                 <div className="progress" style={{ height: '20px' }}>
-                  <div 
-                    className="progress-bar bg-primary" 
+                  <div
+                    className="progress-bar bg-primary"
                     style={{ width: `${(loanAmount / totalAmount) * 100}%` }}
                   >
                     Principal
                   </div>
-                  <div 
-                    className="progress-bar bg-danger" 
+                  <div
+                    className="progress-bar bg-danger"
                     style={{ width: `${(totalInterest / totalAmount) * 100}%` }}
                   >
                     Interest
@@ -229,7 +292,7 @@ const LoanCalculator = () => {
                   <small>Interest: {((totalInterest / totalAmount) * 100).toFixed(1)}%</small>
                 </div>
               </div>
-              
+             
               <div className="mb-4">
                 <h5 className="mb-3">Loan Details</h5>
                 <table className="table">
@@ -263,7 +326,7 @@ const LoanCalculator = () => {
                   </tbody>
                 </table>
               </div>
-              
+             
               <div className="alert alert-info d-flex mb-0">
                 <div className="me-3">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -272,7 +335,7 @@ const LoanCalculator = () => {
                 </div>
                 <div>
                   <p className="mb-0 small">
-                    This is an estimate based on the information provided. Actual loan offers may vary 
+                    This is an estimate based on the information provided. Actual loan offers may vary
                     based on your credit score and other eligibility criteria.
                   </p>
                 </div>
@@ -284,5 +347,6 @@ const LoanCalculator = () => {
     </div>
   );
 };
+
 
 export default LoanCalculator;
