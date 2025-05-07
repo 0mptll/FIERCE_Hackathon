@@ -162,7 +162,8 @@ const Header = () => {
             </ul>
 
             <div className="d-flex align-items-center">
-              {score && (
+              {/* Only show score if user is logged in AND score exists */}
+              {user && score && (
                 <span className="me-3">
                   <span className="me-2">Your Score:</span>
                   <span className={`badge ${
