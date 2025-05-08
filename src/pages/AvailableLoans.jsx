@@ -1,22 +1,80 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ScoreContext } from '../context/ScoreContext';
 import { Ban as Bank, ArrowRight, ShieldCheck, Clock, BadgePercent, AlertCircle } from 'lucide-react';
+import axios from 'axios'; // ✅ Add this
 
+const BASE_URL = 'http://localhost:8080/api/score';
 const AvailableLoans = () => {
-  const { score } = useContext(ScoreContext);
+  const { score, setScore, scoreFactors, setScoreFactors, updateTrigger } = useContext(ScoreContext);
   const [loans, setLoans] = useState([]);
-  
+  const navigate = useNavigate();
+
+
   // Redirect if no score is available
+ 
+ 
   useEffect(() => {
-    if (!score) {
-      window.location.href = '/calculate-score';
+    const fetchScoreData = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        let userId;
+ 
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          userId = user.id;
+          if (!userId) {
+            console.warn("Dashboard: User ID not found in local storage. Redirecting to login.");
+            navigate('/login');
+            return;
+          }
+        } else {
+          console.warn("Dashboard: No user logged in. Redirecting to login.");
+          navigate('/login');
+          return;
+        }
+ 
+        console.log('Dashboard: Fetching score for userId:', userId);
+        const response = await axios.get(`${BASE_URL}/${userId}`);
+        console.log("Dashboard: Fetched Score Data:", response.data);
+ 
+        if (response.data && response.data.score) {
+          setScore(response.data.score);
+          localStorage.setItem('score', response.data.score);
+          setScoreFactors({
+            income: response.data.monthlyIncome ?? 0,
+            spending: response.data.grocerySpending ?? 0,
+            savings: response.data.totalSavings ?? 0,
+            loans: response.data.loanRepayment ?? 0,
+            locationConsistency: response.data.rentOrEmi ?? 0,
+            transactionHistory: response.data.utilityBills ?? 0
+          });
+          generateLoanOffers(response.data.score);
+        } else {
+          navigate("/calculate-score");
+        }
+      } catch (error) {
+        console.error("Dashboard: Error fetching score data:", error);
+      }
+    };
+ 
+    if (score === null || updateTrigger > 0) {
+      fetchScoreData();
     } else {
-      // Generate loan offers based on score
       generateLoanOffers(score);
     }
-  }, [score]);
+ 
+  }, [score, updateTrigger, navigate, setScore, setScoreFactors]);
 
+
+  // useEffect(() => {
+  //   if (!score) {
+  //     window.location.href = '/calculate-score';
+  //   } else {
+  //     // Generate loan offers based on score
+  //     generateLoanOffers(score);
+  //   }
+  // }, [score]);
   const generateLoanOffers = (score) => {
     // Base loan offers with additional banks
     let loanOffers = [
@@ -122,16 +180,18 @@ const AvailableLoans = () => {
         features: ["Flexible repayment", "Quick approval", "Minimal documentation", "Pre-closure option"]
       }
     ];
-  
+ 
     // Filter loans based on score
     const availableLoans = loanOffers.filter(loan => score >= loan.minScore);
     setLoans(availableLoans);
   };
-  
+ 
+
 
   if (!score) {
     return <div className="text-center py-5">Loading...</div>;
   }
+
 
   // Score classification
   const getScoreCategory = (score) => {
@@ -141,12 +201,14 @@ const AvailableLoans = () => {
     return { text: 'Poor', color: 'danger' };
   };
 
+
   const scoreCategory = getScoreCategory(score);
+
 
   return (
     <div className="container py-5">
       <h2 className="mb-4">Available Loan Options</h2>
-      
+     
       <div className="row mb-4">
         <div className="col-lg-8">
           <div className="card border-0 shadow-sm mb-4">
@@ -160,7 +222,7 @@ const AvailableLoans = () => {
                   <p className="text-muted mb-0">Based on your financial behavior</p>
                 </div>
               </div>
-              
+             
               <div className="row g-3">
                 <div className="col-sm-4">
                   <div className="border rounded p-3 text-center">
@@ -198,7 +260,7 @@ const AvailableLoans = () => {
           </div>
         </div>
       </div>
-      
+     
       {loans.length > 0 ? (
         <div className="row g-4">
           {loans.map(loan => (
@@ -232,7 +294,7 @@ const AvailableLoans = () => {
                       <p className="fs-5 fw-semibold mb-0">{loan.tenure[0]}-{loan.tenure[loan.tenure.length-1]} months</p>
                     </div>
                   </div>
-                  
+                 
                   <h6 className="mb-3">Features</h6>
                   <ul className="list-unstyled mb-4">
                     {loan.features.map((feature, index) => (
@@ -242,17 +304,17 @@ const AvailableLoans = () => {
                       </li>
                     ))}
                   </ul>
-                  
+                 
                   <div className="d-flex flex-column flex-sm-row gap-2">
-                    <Link 
-                      to={`/loan-application/${loan.id}`} 
+                    <Link
+                      to={`/loan-application/${loan.id}`}
                       className="btn btn-primary"
                       state={loan}
                     >
                       Apply Now <ArrowRight size={16} className="ms-1" />
                     </Link>
-                    <Link 
-                      to="/loan-calculator" 
+                    <Link
+                      to="/loan-calculator"
                       className="btn btn-outline-secondary"
                       state={{
                         amount: loan.maxAmount / 2,
@@ -304,4 +366,7 @@ const AvailableLoans = () => {
   );
 };
 
+
 export default AvailableLoans;
+
+
