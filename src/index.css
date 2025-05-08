@@ -1,0 +1,134 @@
+:root {
+  --primary-color: #2563eb;
+  --secondary-color: #0f766e;
+  --accent-color: #ea580c;
+  --success-color: #16a34a;
+  --warning-color: #ca8a04;
+  --danger-color: #dc2626;
+  --light-color: #f5f5f5;
+  --dark-color: #1e293b;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8fafc;
+  color: #334155;
+  margin: 0;
+  padding: 0;
+}
+
+.score-poor {
+  color: #dc2626;
+}
+
+.score-fair {
+  color: #d97706;
+}
+
+.score-good {
+  color: #16a34a;
+}
+
+.score-excellent {
+  color: #0284c7;
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  padding: 60px 0;
+}
+
+.score-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.score-card:hover {
+  transform: translateY(-5px);
+}
+
+.factor-item {
+  border-left: 4px solid var(--primary-color);
+  background-color: #f0f9ff;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 0 8px 8px 0;
+}
+
+.upload-zone {
+  border: 2px dashed #cbd5e1;
+  padding: 30px;
+  text-align: center;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  transition: all 0.3s ease;
+}
+
+.upload-zone:hover {
+  border-color: var(--primary-color);
+  background-color: #f0f9ff;
+}
+
+.loan-card {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.loan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.loan-card-premium {
+  border-top: 4px solid var(--primary-color);
+}
+
+.loan-card-standard {
+  border-top: 4px solid var(--success-color);
+}
+
+.loan-card-basic {
+  border-top: 4px solid var(--warning-color);
+}
+
+.nav-link.active {
+  font-weight: 600;
+  color: var(--primary-color) !important;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.btn-outline-primary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.form-range::-webkit-slider-thumb {
+  background: var(--primary-color);
+}
+
+.form-range::-moz-range-thumb {
+  background: var(--primary-color);
+}
+
+.form-range::-ms-thumb {
+  background: var(--primary-color);
+}
