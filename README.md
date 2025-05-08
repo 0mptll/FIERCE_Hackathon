@@ -60,7 +60,7 @@ FIERCE Finance introduces an **AI-driven platform** that:
 
 ---
 
-## 🔗 Demo (If Available)
+## 🔗 Demo
 [[Live Demo Link](https://drive.google.com/file/d/1GUMGba6go1wGG4DiZoZxra-ABHYPKnUp/view?usp=sharing)]
 
 ---
