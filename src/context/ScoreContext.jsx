@@ -1,11 +1,4 @@
-// import { createContext } from 'react';
-
-
-    // export const ScoreContext = createContext(null);
-
-
-    import React, { createContext, useState, useEffect } from 'react';
-
+import React, { createContext, useState, useEffect } from 'react';
 
     export const ScoreContext = createContext();
    

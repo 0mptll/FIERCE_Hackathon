@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ScoreContext } from '../context/ScoreContext';
 
 import { TrendingUp, BarChart4, FileText, CreditCard, LineChart, Clock, BarChart2, Award } from 'lucide-react';
-import axios from 'axios'; // ✅ Add this
+import axios from 'axios'; 
 
 const BASE_URL = 'http://localhost:8080/api/score';
 

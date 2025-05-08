@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ScoreContext } from '../context/ScoreContext';
 import { Upload, Check, AlertCircle } from 'lucide-react';
-import axios from 'axios'; // ✅ Add this
+import axios from 'axios'; 
 
 
 

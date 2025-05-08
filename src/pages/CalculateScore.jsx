@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ScoreContext } from '../context/ScoreContext';
 
+
 const BASE_URL = 'http://localhost:8080/api/score';
+
 
 const CalculateScore = () => {
     const navigate = useNavigate();
-    const { setScore, setScoreFactors, triggerUpdate } = useContext(ScoreContext); // Removed score from context
+    const { score, setScore, scoreFactors, setScoreFactors, updateTrigger } = useContext(ScoreContext);
     const [userId, setUserId] = useState(null);
     const [formData, setFormData] = useState({
         monthlyIncome: '',
@@ -25,6 +27,8 @@ const CalculateScore = () => {
     const [isCalculating, setIsCalculating] = useState(false); // Add a loading state
 
 
+
+
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
@@ -37,6 +41,72 @@ const CalculateScore = () => {
     }, [navigate]);
 
 
+useEffect(() => {
+  const fetchScoreData = async () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      let userId;
+
+
+
+
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        userId = user.id;
+        if (!userId) {
+          console.warn("Dashboard: User ID not found in local storage. Redirecting to login.");
+          navigate('/login');
+          return;
+        }
+      } else {
+        console.warn("Dashboard: No user logged in. Redirecting to login.");
+        navigate('/login');
+        return;
+      }
+
+
+
+
+      console.log('Dashboard: Fetching score for userId:', userId);
+      const response = await axios.get(`${BASE_URL}/${userId}`);
+      console.log("Dashboard: Fetched Score Data:", response.data);
+
+
+
+
+      if (response.data && response.data.score) {
+        setScore(response.data.score);
+        localStorage.setItem('score', response.data.score);
+        // setScoreFactors({
+        //   income: response.data.monthlyIncome ?? 0,
+        //   spending: response.data.grocerySpending ?? 0,
+        //   savings: response.data.totalSavings ?? 0,
+        //   loans: response.data.loanRepayment ?? 0,
+        //   locationConsistency: response.data.rentOrEmi ?? 0,
+        //   transactionHistory: response.data.utilityBills ?? 0
+        // });
+      //   generateLoanOffers(response.data.score);
+      } else {
+        navigate("/calculate-score");
+      }
+    } catch (error) {
+      console.error("Dashboard: Error fetching score data:", error);
+    }
+  };
+
+
+
+
+  if (score === null || updateTrigger > 0) {
+    fetchScoreData();
+  } else {
+  //   generateLoanOffers(score);
+  }
+
+
+
+
+}, [score, updateTrigger, navigate, setScore, setScoreFactors]);
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -44,6 +114,7 @@ const CalculateScore = () => {
             [name]: Number(value)
         }));
     };
+
 
     const calculateMLScore = async () => {
         if (!userId) {
@@ -53,21 +124,26 @@ const CalculateScore = () => {
             return;
         }
 
+
         setIsCalculating(true); // Start calculating
         setError(''); // Clear any previous errors
+
 
         try {
             console.log("Sending request to ML API at: http://localhost:5001/predict");
             console.log("Request Data:", formData);
 
+
             const mlResponse = await axios.post("http://localhost:5001/predict", formData, {
                 headers: { 'Content-Type': 'application/json' }
             });
+
 
             if (mlResponse.data) {
                 console.log("ML API Response:", mlResponse.data);
                 const category = mlResponse.data.credit_rating;
                 setCategory(category);
+
 
                 let adjustedScore = 300;
                 switch (category) {
@@ -89,8 +165,10 @@ const CalculateScore = () => {
                 adjustedScore = Math.max(adjustedScore, 300);
                 setLocalScore(adjustedScore);
 
+
                 console.log("Updated Score:", adjustedScore);
                 console.log("Sending final data to backend for userId:", userId);
+
 
                 const backendResponse = await axios.post(`${BASE_URL}/calculate/${userId}`, {
                     monthly_income: formData.monthlyIncome,
@@ -105,31 +183,38 @@ const CalculateScore = () => {
                     score: adjustedScore
                 });
 
+
                 console.log("Stored in Backend:", backendResponse.data);
+
 
                 // Get full data back from backend to ensure consistency
                 const updatedData = backendResponse.data;
 
+
                 // Now set score in context with data from backend
                 setScore(updatedData.score || adjustedScore);  // Ensure a score is always set
                 setScoreFactors({
-                    income: updatedData.monthlyIncome || formData.monthlyIncome || 0,
-                    spending: updatedData.grocerySpending || formData.grocerySpending || 0,
-                    savings: updatedData.totalSavings || formData.totalSavings || 0,
-                    loans: updatedData.loanRepayment || formData.loanRepayment || 0,
-                    locationConsistency: updatedData.rentOrEmi || formData.rentEmi || 0,
-                    transactionHistory: updatedData.utilityBills || formData.utilityBills || 0
+                    income: ((updatedData.monthlyIncome || formData.monthlyIncome || 0)/(updatedData.monthlyIncome || formData.monthlyIncome || 0))*100,
+                    spending: ((updatedData.grocerySpending || formData.grocerySpending || 0)/(updatedData.monthlyIncome || formData.monthlyIncome || 0))*100,
+                    savings: ((updatedData.totalSavings || formData.totalSavings || 0)/(updatedData.monthlyIncome || formData.monthlyIncome || 0))*100,
+                    loans: ((updatedData.loanRepayment || formData.loanRepayment || 0)/(updatedData.monthlyIncome || formData.monthlyIncome || 0))*100,
+                    locationConsistency: ((updatedData.rentOrEmi || formData.rentEmi || 0)/(updatedData.monthlyIncome || formData.monthlyIncome || 0))*100,
+                    transactionHistory: ((updatedData.utilityBills || formData.utilityBills || 0)/(updatedData.monthlyIncome || formData.monthlyIncome || 0))*100
                 });
 
+
                 // Trigger update AFTER setting context values
-                triggerUpdate(prev => prev + 1);
+                // triggerUpdate(prev => prev + 1);
+
 
                 // Navigate immediately
                 navigate('/dashboard');
 
+
             } else {
                 setError("Failed to get data from ML API");
             }
+
 
         } catch (err) {
             console.error("Error fetching ML category or storing data:", err);
@@ -138,6 +223,7 @@ const CalculateScore = () => {
             setIsCalculating(false); // End calculating
         }
     };
+
 
     return (
         <div className="container py-5">
@@ -149,7 +235,7 @@ const CalculateScore = () => {
                             {error && <div className="alert alert-danger">{error}</div>}
                             {/* {localScore && (
                                 // <div className="alert alert-success">
-                                //     Base Score: {localScore} 
+                                //     Base Score: {localScore}
                                 // </div>
                             )} */}
                             <form>
@@ -181,4 +267,8 @@ const CalculateScore = () => {
 };
 
 
+
+
 export default CalculateScore;
+
+

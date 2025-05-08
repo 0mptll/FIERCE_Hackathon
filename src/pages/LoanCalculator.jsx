@@ -6,7 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ScoreContext } from '../context/ScoreContext';
 import { Calendar, DollarSign, Percent, ArrowRight } from 'lucide-react';
 const BASE_URL = 'http://localhost:8080/api/score';
-import axios from 'axios'; // ✅ Add this
+import axios from 'axios'; 
 
 
 

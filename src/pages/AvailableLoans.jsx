@@ -9,11 +9,6 @@ const AvailableLoans = () => {
   const { score, setScore, scoreFactors, setScoreFactors, updateTrigger } = useContext(ScoreContext);
   const [loans, setLoans] = useState([]);
   const navigate = useNavigate();
-
-
-  // Redirect if no score is available
- 
- 
   useEffect(() => {
     const fetchScoreData = async () => {
       try {
