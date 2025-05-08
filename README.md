@@ -1,54 +1,77 @@
-# React + TypeScript + Vite
+# FIERCE Finance 💸 | AI-Powered Financial Inclusion
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**FIERCE Finance** is an AI-powered credit scoring platform designed to bring **financial inclusion** to millions of rural and informal workers in India who are traditionally excluded from formal credit systems.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🔍 Problem Statement
 
-## Expanding the ESLint configuration
+Over 400 million Indians in rural and informal sectors lack access to credit due to the absence of traditional credit history (like CIBIL scores). Despite having stable incomes and responsible financial behavior, they remain invisible to lenders.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## 💡 Our Solution
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+FIERCE Finance introduces an **AI-driven platform** that:
+- Analyzes real-world financial behavior (e.g., income, expenses, savings)
+- Generates dynamic and adaptive credit scores
+- Recommends personalized loan options
+- Helps users grow financial credibility through consistent behavior updates
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+## 🎯 Target Audience
+
+- Rural and semi-urban citizens
+- Informal sector workers (daily wagers, laborers, street vendors)
+- Students and homemakers with part-time income
+- Migrant and gig-economy workers
+
+---
+
+## 🚀 Key Features
+
+| Feature            | Description                                                                 |
+|--------------------|-----------------------------------------------------------------------------|
+| **AI Credit Score**| Behavior-based scoring using income, spending, and financial activity       |
+| **Score Growth**   | Suggestions to improve creditworthiness over time                           |
+| **Dashboard**      | Visual insights into financial behavior and score changes                   |
+| **Loan Eligibility**| Personalized loan opportunities based on dynamic scores                    |
+
+---
+
+## 🧠 Innovation Highlights
+
+- ✅ **No dependency on CIBIL** – pure AI-based behavioral scoring
+- 🌱 **Financial literacy & improvement** – not just scoring, but score building
+- 🌐 **Scalable** with MFIs, NBFCs, and cooperative banks
+- 🧑‍🤝‍🧑 **Inclusive UI** with vernacular support planned
+- 💰 **Rewards responsible behavior** with lower interest rates
+
+---
+
+## 📦 Tech Stack
+
+- **Frontend**: React.js + TailwindCSS
+- **Backend**: Spring Boot, REST APIs
+- **Database**: MySQL
+- **AI Module**: Python-based credit score prediction engine
+- **Real-time Chat**: Node.js, Express.js, WebSocket, MongoDB
+
+---
+
+## 🔗 Demo (If Available)
+[Live Demo Link or Screenshots Placeholder]
+
+---
+
+## 👨‍💻 Developed By
+
+- **Patel Om**
+- **Parmar Vanraj**
+
+Hackathon Submission: **FIERCE Hackathon | Theme – AI + Finance Inclusion**
+
+
+
+> **"FIERCE Finance – Enabling Smart Credit for the Underserved."**
