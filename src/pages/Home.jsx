@@ -3,11 +3,17 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ScoreContext } from '../context/ScoreContext';
 
 
+
+
 import { TrendingUp, BarChart4, FileText, CreditCard } from 'lucide-react';
 import axios from 'axios'; // ✅ Add this
 
 
+
+
 const BASE_URL = 'http://localhost:8080/api/score';
+
+
 
 
 const Home = () => {
@@ -73,7 +79,7 @@ const Home = () => {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6">
-              <h1 className="display-5 fw-bold mb-3">Financial Inclusion for Rural Workers</h1>
+              <h1 className="display-5 fw-bold mb-3">Financial Inclusion for Rural & Casual Earners</h1>
               <p className="fs-5 mb-4">
                 Get access to formal credit based on your financial behavior, even if you don't have a traditional credit history.
               </p>
@@ -96,6 +102,8 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+
 
 
       <section className="py-5" id="how-it-works">
@@ -240,4 +248,8 @@ const Home = () => {
 };
 
 
+
+
 export default Home;
+
+

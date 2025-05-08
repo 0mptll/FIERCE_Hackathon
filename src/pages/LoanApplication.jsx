@@ -2,18 +2,32 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ScoreContext } from '../context/ScoreContext';
 import { CheckCircle, AlertCircle, FileText, Calendar } from 'lucide-react';
+import axios from 'axios';
+
+const BASE_URL = 'http://localhost:8080/api/score';
 
 const LoanApplication = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { score } = useContext(ScoreContext);
-  
+  const { score, setScore, scoreFactors, setScoreFactors, updateTrigger } = useContext(ScoreContext);
+  const storedUser = localStorage.getItem('user');
+  const user = JSON.parse(storedUser);
+  const userId = user.id;
   const [loan, setLoan] = useState(null);
   const [activeStep, setActiveStep] = useState(1);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [loanAmount, setLoanAmount] = useState('');
   const [loanTenure, setLoanTenure] = useState('');
+  const [loanDetails, setLoanDetails] = useState({
+    interest: 0,
+    monthly: 0,
+  });
+  
+  // Add validation states
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+ 
   const [formData, setFormData] = useState({
     fullName: '',
     gender: '',
@@ -32,13 +46,7 @@ const LoanApplication = () => {
     purpose: '',
     agreeTerms: false
   });
-  
-  // Form validation states
-  const [formErrors, setFormErrors] = useState({
-    step1: false,
-    step2: false
-  });
-  
+ 
   // Load loan details from location state or fetch based on ID
   useEffect(() => {
     if (location.state) {
@@ -50,59 +58,210 @@ const LoanApplication = () => {
       navigate('/available-loans');
     }
   }, [location, id, navigate]);
-  
-  // Redirect if no score is available
+ 
   useEffect(() => {
-    if (!score) {
-      navigate('/calculate-score');
+    const fetchScoreData = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        let userId;
+ 
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          userId = user.id;
+          if (!userId) {
+            console.warn("Dashboard: User ID not found in local storage. Redirecting to login.");
+            navigate('/login');
+            return;
+          }
+        } else {
+          console.warn("Dashboard: No user logged in. Redirecting to login.");
+          navigate('/login');
+          return;
+        }
+ 
+        console.log('Dashboard: Fetching score for userId:', userId);
+        const response = await axios.get(`${BASE_URL}/${userId}`);
+        console.log("Dashboard: Fetched Score Data:", response.data);
+ 
+        if (response.data && response.data.score) {
+          setScore(response.data.score);
+          localStorage.setItem('score', response.data.score);
+          setScoreFactors({
+            income: response.data.monthlyIncome ?? 0,
+            spending: response.data.grocerySpending ?? 0,
+            savings: response.data.totalSavings ?? 0,
+            loans: response.data.loanRepayment ?? 0,
+            locationConsistency: response.data.rentOrEmi ?? 0,
+            transactionHistory: response.data.utilityBills ?? 0
+          });
+        } else {
+          navigate("/calculate-score");
+        }
+      } catch (error) {
+        console.error("Dashboard: Error fetching score data:", error);
+      }
+    };
+ 
+    if (score === null || updateTrigger > 0) {
+      fetchScoreData();
     }
-  }, [score, navigate]);
+  }, [score, updateTrigger, navigate, setScore, setScoreFactors]);
+
+  useEffect(() => {
+    if (loanAmount && loanTenure) {
+      const interest = loan?.interest || 0; // Just an example
+      const monthly = calculateMonthlyEMI(loanAmount, loanTenure, interest);
+ 
+      setLoanDetails({ interest, monthly });
+    }
+  }, [loanAmount, loanTenure, loan]);
+ 
+  const calculateMonthlyEMI = (amount, years, interestRate) => {
+    const months = years * 12;
+    const r = interestRate / 100 / 12;
+    return (amount * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+  };
 
   if (!loan || !score) {
     return <div className="text-center py-5">Loading...</div>;
   }
 
+  // Validation function
+  const validateField = (name, value) => {
+    let error = '';
+    
+    if (!value && value !== false) {
+      error = 'This field is required';
+    } else {
+      switch (name) {
+        case 'email':
+          if (!/\S+@\S+\.\S+/.test(value)) {
+            error = 'Please enter a valid email address';
+          }
+          break;
+        case 'mobile':
+          if (!/^[0-9]{10}$/.test(value)) {
+            error = 'Please enter a valid 10-digit mobile number';
+          }
+          break;
+        case 'panNumber':
+          if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
+            error = 'Please enter a valid PAN number (e.g., ABCDE1234F)';
+          }
+          break;
+        case 'aadhaarNumber':
+          if (!/^[0-9]{4}$/.test(value)) {
+            error = 'Please enter the last 4 digits of your Aadhaar number';
+          }
+          break;
+        case 'pincode':
+          if (!/^[0-9]{6}$/.test(value)) {
+            error = 'Please enter a valid 6-digit PIN code';
+          }
+          break;
+        case 'monthlyIncome':
+          if (Number(value) < 5000) {
+            error = 'Monthly income must be at least ₹5,000';
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    
+    return error;
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const newValue = type === 'checkbox' ? checked : value;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: newValue
+    }));
+    
+    // Mark field as touched
+    setTouched(prev => ({
+      ...prev,
+      [name]: true
+    }));
+    
+    // Validate field
+    const error = validateField(name, newValue);
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
     }));
   };
 
-  // Validate form fields for each step
-  const validateStep1 = () => {
-    if (!loanAmount || !loanTenure || !formData.purpose) {
-      setFormErrors(prev => ({ ...prev, step1: true }));
-      return false;
+  // Validate all fields in a step
+  const validateStep = (step) => {
+    let newErrors = {};
+    let isValid = true;
+    
+    if (step === 1) {
+      // Validate loan details step
+      if (!loanAmount) {
+        newErrors.loanAmount = 'Please select a loan amount';
+        isValid = false;
+      }
+      
+      if (!loanTenure) {
+        newErrors.loanTenure = 'Please select a loan tenure';
+        isValid = false;
+      }
+      
+      if (!formData.purpose) {
+        newErrors.purpose = 'Please select a purpose for the loan';
+        isValid = false;
+      }
+    } else if (step === 2) {
+      // Validate personal details step
+      const fieldsToValidate = [
+        'fullName', 'gender', 'dob', 'mobile', 'email', 'address', 
+        'city', 'state', 'pincode', 'occupation', 'employerName', 
+        'monthlyIncome', 'panNumber', 'aadhaarNumber'
+      ];
+      
+      // Mark all fields as touched
+      let newTouched = {};
+      fieldsToValidate.forEach(field => {
+        newTouched[field] = true;
+        const error = validateField(field, formData[field]);
+        if (error) {
+          isValid = false;
+          newErrors[field] = error;
+        }
+      });
+      
+      setTouched(prev => ({
+        ...prev,
+        ...newTouched
+      }));
     }
-    setFormErrors(prev => ({ ...prev, step1: false }));
-    return true;
-  };
-
-  const validateStep2 = () => {
-    const requiredFields = [
-      'fullName', 'gender', 'dob', 'mobile', 'email', 
-      'address', 'city', 'state', 'pincode', 
-      'occupation', 'employerName', 'monthlyIncome', 
-      'panNumber', 'aadhaarNumber'
-    ];
     
-    const isValid = requiredFields.every(field => formData[field].trim() !== '');
+    setErrors(prev => ({
+      ...prev,
+      ...newErrors
+    }));
     
-    setFormErrors(prev => ({ ...prev, step2: !isValid }));
     return isValid;
   };
 
   const handleNext = () => {
-    if (activeStep === 1) {
-      if (!validateStep1()) return;
-    } else if (activeStep === 2) {
-      if (!validateStep2()) return;
-    }
+    const isValid = validateStep(activeStep);
     
-    setActiveStep(prev => prev + 1);
-    window.scrollTo(0, 0);
+    if (isValid) {
+      setActiveStep(prev => prev + 1);
+      window.scrollTo(0, 0);
+    } else {
+      // Scroll to the first error
+      const firstErrorField = document.querySelector('.is-invalid');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
   };
 
   const handlePrev = () => {
@@ -110,30 +269,68 @@ const LoanApplication = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Final validation before submission
-    if (!formData.agreeTerms) return;
-    
-    setFormSubmitted(true);
-    
-    // In a real app, this would submit the application to the backend
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 5000);
+ 
+    if (!formData.agreeTerms) {
+      setErrors(prev => ({
+        ...prev,
+        agreeTerms: 'You must agree to the terms and conditions before submitting.'
+      }));
+      return;
+    }
+ 
+    try {
+      const payload = {
+        aadhaarNumber: formData.aadhaarNumber,
+        address: formData.address,
+        bank: loan.bank,
+        city: formData.city,
+        dob: formData.dob,
+        email: formData.email,
+        employerName: formData.employerName,
+        fullName: formData.fullName,
+        gender: formData.gender,
+        interest: parseFloat(loanDetails.interest),
+        loanAmount: parseFloat(loanAmount),
+        loanTenure: parseInt(loanTenure, 10),
+        mobile: formData.mobile,
+        monthly: parseFloat(loanDetails.monthly),
+        user: userId
+      };
+ 
+      const response = await fetch('http://localhost:8080/api/applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+ 
+      if (response.ok) {
+        const result = await response.json();
+        setFormSubmitted(true);
+        alert("Loan application submitted successfully!");
+        // Optionally redirect or reset form here
+      } else {
+        alert("Failed to submit application.");
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      alert("An error occurred. Please try again.");
+    }
   };
 
   // Calculate EMI based on loan amount and tenure
   const calculateEmi = () => {
     // Convert interest rate from annual to monthly
     const monthlyInterestRate = loan.interest / 12 / 100;
-    
+   
     // Calculate EMI
-    const emi = loanAmount * monthlyInterestRate * 
-                Math.pow(1 + monthlyInterestRate, loanTenure) / 
+    const emi = loanAmount * monthlyInterestRate *
+                Math.pow(1 + monthlyInterestRate, loanTenure) /
                 (Math.pow(1 + monthlyInterestRate, loanTenure) - 1);
-    
+   
     return isNaN(emi) ? 0 : Math.round(emi);
   };
 
@@ -165,14 +362,14 @@ const LoanApplication = () => {
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
                 <h2 className="mb-4">{loan.bank} Loan Application</h2>
-                
+               
                 {/* Progress steps */}
                 <div className="mb-5">
                   <div className="d-flex justify-content-between position-relative mb-4">
                     <div className="flex-grow-1 position-absolute" style={{ height: '2px', backgroundColor: '#e2e8f0', top: '50%', zIndex: 1 }}></div>
                     {[1, 2, 3].map((step) => (
                       <div key={step} className="d-flex flex-column align-items-center position-relative" style={{ zIndex: 2 }}>
-                        <div 
+                        <div
                           className={`rounded-circle d-flex align-items-center justify-content-center mb-2 ${
                             activeStep >= step ? 'bg-primary text-white' : 'bg-light text-muted'
                           }`}
@@ -187,19 +384,13 @@ const LoanApplication = () => {
                     ))}
                   </div>
                 </div>
-                
-                <form onSubmit={handleSubmit} noValidate>
+               
+                <form onSubmit={handleSubmit}>
                   {/* Step 1: Loan Details */}
                   {activeStep === 1 && (
                     <div>
                       <h4 className="mb-4">Loan Details</h4>
-                      
-                      {formErrors.step1 && (
-                        <div className="alert alert-danger mb-4">
-                          <strong>Please complete all required fields before proceeding.</strong>
-                        </div>
-                      )}
-                      
+                     
                       <div className="alert alert-light d-flex mb-4">
                         <div className="me-3">
                           <CheckCircle size={24} className="text-success" />
@@ -207,47 +398,56 @@ const LoanApplication = () => {
                         <div>
                           <h5 className="mb-1">Pre-Approved Loan Offer</h5>
                           <p className="mb-0">
-                            Based on your credit score of <strong>{score}</strong>, you are eligible for a loan of up to 
+                            Based on your credit score of <strong>{score}</strong>, you are eligible for a loan of up to
                             <strong> ₹{loan.maxAmount.toLocaleString()}</strong> at <strong>{loan.interest}% interest rate</strong>.
                           </p>
                         </div>
                       </div>
-                      
+                     
                       <div className="row mb-4">
                         <div className="col-md-6">
                           <label htmlFor="loanAmount" className="form-label">Loan Amount (₹) <span className="text-danger">*</span></label>
-                          <input 
+                          <input
                             type="range"
-                            className="form-range mb-2"
+                            className={`form-range mb-2 ${errors.loanAmount ? 'is-invalid' : ''}`}
                             id="loanAmount"
                             min="10000"
                             max={loan.maxAmount}
                             step="5000"
                             value={loanAmount}
-                            onChange={(e) => setLoanAmount(e.target.value)}
-                            required
+                            onChange={(e) => {
+                              setLoanAmount(e.target.value);
+                              setErrors(prev => ({ ...prev, loanAmount: '' }));
+                            }}
                           />
                           <div className="d-flex justify-content-between">
                             <small>₹10,000</small>
                             <input
                               type="number"
-                              className="form-control form-control-sm w-25 mx-2"
+                              className={`form-control form-control-sm w-25 mx-2 ${errors.loanAmount ? 'is-invalid' : ''}`}
                               value={loanAmount}
-                              onChange={(e) => setLoanAmount(e.target.value)}
+                              onChange={(e) => {
+                                setLoanAmount(e.target.value);
+                                setErrors(prev => ({ ...prev, loanAmount: '' }));
+                              }}
                               min="10000"
                               max={loan.maxAmount}
                               required
                             />
                             <small>₹{loan.maxAmount.toLocaleString()}</small>
                           </div>
+                          {errors.loanAmount && <div className="invalid-feedback">{errors.loanAmount}</div>}
                         </div>
                         <div className="col-md-6">
                           <label htmlFor="loanTenure" className="form-label">Loan Tenure (months) <span className="text-danger">*</span></label>
-                          <select 
-                            className={`form-select ${!loanTenure && 'is-invalid'}`}
+                          <select
+                            className={`form-select ${errors.loanTenure ? 'is-invalid' : ''}`}
                             id="loanTenure"
                             value={loanTenure}
-                            onChange={(e) => setLoanTenure(e.target.value)}
+                            onChange={(e) => {
+                              setLoanTenure(e.target.value);
+                              setErrors(prev => ({ ...prev, loanTenure: '' }));
+                            }}
                             required
                           >
                             <option value="">Select loan tenure</option>
@@ -255,10 +455,10 @@ const LoanApplication = () => {
                               <option key={tenure} value={tenure}>{tenure} months</option>
                             ))}
                           </select>
-                          {!loanTenure && <div className="invalid-feedback">Please select a loan tenure</div>}
+                          {errors.loanTenure && <div className="invalid-feedback">{errors.loanTenure}</div>}
                         </div>
                       </div>
-                      
+                     
                       <div className="row mb-4">
                         <div className="col-md-4">
                           <div className="card">
@@ -286,11 +486,11 @@ const LoanApplication = () => {
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="mb-4">
                         <label htmlFor="purpose" className="form-label">Purpose of Loan <span className="text-danger">*</span></label>
-                        <select 
-                          className={`form-select ${!formData.purpose && 'is-invalid'}`}
+                        <select
+                          className={`form-select ${errors.purpose ? 'is-invalid' : ''}`}
                           id="purpose"
                           name="purpose"
                           value={formData.purpose}
@@ -306,12 +506,12 @@ const LoanApplication = () => {
                           <option value="wedding">Wedding</option>
                           <option value="other">Other</option>
                         </select>
-                        {!formData.purpose && <div className="invalid-feedback">Please select a purpose for the loan</div>}
+                        {errors.purpose && <div className="invalid-feedback">{errors.purpose}</div>}
                       </div>
-                      
+                     
                       <div className="d-flex justify-content-end mt-4">
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="btn btn-primary px-4"
                           onClick={handleNext}
                         >
@@ -320,39 +520,33 @@ const LoanApplication = () => {
                       </div>
                     </div>
                   )}
-                  
+                 
                   {/* Step 2: Personal Details */}
                   {activeStep === 2 && (
                     <div>
                       <h4 className="mb-4">Personal Details</h4>
-                      
-                      {formErrors.step2 && (
-                        <div className="alert alert-danger mb-4">
-                          <strong>Please complete all required fields before proceeding.</strong>
-                        </div>
-                      )}
-                      
+                     
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="fullName" className="form-label">Full Name <span className="text-danger">*</span></label>
-                            <input 
-                              type="text" 
-                              className={`form-control ${!formData.fullName && 'is-invalid'}`}
+                            <input
+                              type="text"
+                              className={`form-control ${touched.fullName && errors.fullName ? 'is-invalid' : ''}`}
                               id="fullName"
                               name="fullName"
                               value={formData.fullName}
                               onChange={handleInputChange}
                               required
                             />
-                            {!formData.fullName && <div className="invalid-feedback">Please enter your full name</div>}
+                            {touched.fullName && errors.fullName && <div className="invalid-feedback">{errors.fullName}</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="gender" className="form-label">Gender <span className="text-danger">*</span></label>
-                            <select 
-                              className={`form-select ${!formData.gender && 'is-invalid'}`}
+                            <select
+                              className={`form-select ${touched.gender && errors.gender ? 'is-invalid' : ''}`}
                               id="gender"
                               name="gender"
                               value={formData.gender}
@@ -364,33 +558,33 @@ const LoanApplication = () => {
                               <option value="female">Female</option>
                               <option value="other">Other</option>
                             </select>
-                            {!formData.gender && <div className="invalid-feedback">Please select your gender</div>}
+                            {touched.gender && errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="dob" className="form-label">Date of Birth <span className="text-danger">*</span></label>
-                            <input 
-                              type="date" 
-                              className={`form-control ${!formData.dob && 'is-invalid'}`}
+                            <input
+                              type="date"
+                              className={`form-control ${touched.dob && errors.dob ? 'is-invalid' : ''}`}
                               id="dob"
                               name="dob"
                               value={formData.dob}
                               onChange={handleInputChange}
                               required
                             />
-                            {!formData.dob && <div className="invalid-feedback">Please enter your date of birth</div>}
+                            {touched.dob && errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="mobile" className="form-label">Mobile Number <span className="text-danger">*</span></label>
-                            <input 
-                              type="tel" 
-                              className={`form-control ${formData.mobile && !/^[0-9]{10}$/.test(formData.mobile) ? 'is-invalid' : ''}`}
+                            <input
+                              type="tel"
+                              className={`form-control ${touched.mobile && errors.mobile ? 'is-invalid' : ''}`}
                               id="mobile"
                               name="mobile"
                               value={formData.mobile}
@@ -399,33 +593,29 @@ const LoanApplication = () => {
                               placeholder="10-digit mobile number"
                               required
                             />
-                            {formData.mobile && !/^[0-9]{10}$/.test(formData.mobile) && 
-                              <div className="invalid-feedback">Please enter a valid 10-digit mobile number</div>
-                            }
+                            {touched.mobile && errors.mobile && <div className="invalid-feedback">{errors.mobile}</div>}
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="mb-3">
                         <label htmlFor="email" className="form-label">Email Address <span className="text-danger">*</span></label>
-                        <input 
-                          type="email" 
-                          className={`form-control ${formData.email && !/\S+@\S+\.\S+/.test(formData.email) ? 'is-invalid' : ''}`}
+                        <input
+                          type="email"
+                          className={`form-control ${touched.email && errors.email ? 'is-invalid' : ''}`}
                           id="email"
                           name="email"
                           value={formData.email}
                           onChange={handleInputChange}
                           required
                         />
-                        {formData.email && !/\S+@\S+\.\S+/.test(formData.email) && 
-                          <div className="invalid-feedback">Please enter a valid email address</div>
-                        }
+                        {touched.email && errors.email && <div className="invalid-feedback">{errors.email}</div>}
                       </div>
-                      
+                     
                       <div className="mb-3">
                         <label htmlFor="address" className="form-label">Full Address <span className="text-danger">*</span></label>
-                        <textarea 
-                          className={`form-control ${!formData.address && 'is-invalid'}`}
+                        <textarea
+                          className={`form-control ${touched.address && errors.address ? 'is-invalid' : ''}`}
                           id="address"
                           name="address"
                           value={formData.address}
@@ -433,46 +623,46 @@ const LoanApplication = () => {
                           rows="2"
                           required
                         ></textarea>
-                        {!formData.address && <div className="invalid-feedback">Please enter your full address</div>}
+                        {touched.address && errors.address && <div className="invalid-feedback">{errors.address}</div>}
                       </div>
-                      
+                     
                       <div className="row mb-3">
                         <div className="col-md-4">
                           <div className="mb-3">
                             <label htmlFor="city" className="form-label">City <span className="text-danger">*</span></label>
-                            <input 
-                              type="text" 
-                              className={`form-control ${!formData.city && 'is-invalid'}`}
+                            <input
+                              type="text"
+                              className={`form-control ${touched.city && errors.city ? 'is-invalid' : ''}`}
                               id="city"
                               name="city"
                               value={formData.city}
                               onChange={handleInputChange}
                               required
                             />
-                            {!formData.city && <div className="invalid-feedback">Please enter your city</div>}
+                            {touched.city && errors.city && <div className="invalid-feedback">{errors.city}</div>}
                           </div>
                         </div>
                         <div className="col-md-4">
                           <div className="mb-3">
                             <label htmlFor="state" className="form-label">State <span className="text-danger">*</span></label>
-                            <input 
-                              type="text" 
-                              className={`form-control ${!formData.state && 'is-invalid'}`}
+                            <input
+                              type="text"
+                              className={`form-control ${touched.state && errors.state ? 'is-invalid' : ''}`}
                               id="state"
                               name="state"
                               value={formData.state}
                               onChange={handleInputChange}
                               required
                             />
-                            {!formData.state && <div className="invalid-feedback">Please enter your state</div>}
+                            {touched.state && errors.state && <div className="invalid-feedback">{errors.state}</div>}
                           </div>
                         </div>
                         <div className="col-md-4">
                           <div className="mb-3">
                             <label htmlFor="pincode" className="form-label">PIN Code <span className="text-danger">*</span></label>
-                            <input 
-                              type="text" 
-                              className={`form-control ${formData.pincode && !/^[0-9]{6}$/.test(formData.pincode) ? 'is-invalid' : ''}`}
+                            <input
+                              type="text"
+                              className={`form-control ${touched.pincode && errors.pincode ? 'is-invalid' : ''}`}
                               id="pincode"
                               name="pincode"
                               value={formData.pincode}
@@ -481,19 +671,17 @@ const LoanApplication = () => {
                               placeholder="6-digit PIN code"
                               required
                             />
-                            {formData.pincode && !/^[0-9]{6}$/.test(formData.pincode) && 
-                              <div className="invalid-feedback">Please enter a valid 6-digit PIN code</div>
-                            }
+                            {touched.pincode && errors.pincode && <div className="invalid-feedback">{errors.pincode}</div>}
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="occupation" className="form-label">Occupation <span className="text-danger">*</span></label>
-                            <select 
-                              className={`form-select ${!formData.occupation && 'is-invalid'}`}
+                            <select
+                              className={`form-select ${touched.occupation && errors.occupation ? 'is-invalid' : ''}`}
                               id="occupation"
                               name="occupation"
                               value={formData.occupation}
@@ -508,31 +696,31 @@ const LoanApplication = () => {
                               <option value="service">Service Worker</option>
                               <option value="other">Other</option>
                             </select>
-                            {!formData.occupation && <div className="invalid-feedback">Please select your occupation</div>}
+                            {touched.occupation && errors.occupation && <div className="invalid-feedback">{errors.occupation}</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="employerName" className="form-label">Employer/Business Name <span className="text-danger">*</span></label>
-                            <input 
-                              type="text" 
-                              className={`form-control ${!formData.employerName && 'is-invalid'}`}
+                            <input
+                              type="text"
+                              className={`form-control ${touched.employerName && errors.employerName ? 'is-invalid' : ''}`}
                               id="employerName"
                               name="employerName"
                               value={formData.employerName}
                               onChange={handleInputChange}
                               required
                             />
-                            {!formData.employerName && <div className="invalid-feedback">Please enter your employer/business name</div>}
+                            {touched.employerName && errors.employerName && <div className="invalid-feedback">{errors.employerName}</div>}
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="mb-3">
                         <label htmlFor="monthlyIncome" className="form-label">Monthly Income (₹) <span className="text-danger">*</span></label>
-                        <input 
-                          type="number" 
-                          className={`form-control ${formData.monthlyIncome && Number(formData.monthlyIncome) < 5000 ? 'is-invalid' : ''}`}
+                        <input
+                          type="number"
+                          className={`form-control ${touched.monthlyIncome && errors.monthlyIncome ? 'is-invalid' : ''}`}
                           id="monthlyIncome"
                           name="monthlyIncome"
                           value={formData.monthlyIncome}
@@ -540,18 +728,16 @@ const LoanApplication = () => {
                           min="5000"
                           required
                         />
-                        {formData.monthlyIncome && Number(formData.monthlyIncome) < 5000 && 
-                          <div className="invalid-feedback">Monthly income must be at least ₹5,000</div>
-                        }
+                        {touched.monthlyIncome && errors.monthlyIncome && <div className="invalid-feedback">{errors.monthlyIncome}</div>}
                       </div>
-                      
+                     
                       <div className="row mb-3">
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="panNumber" className="form-label">PAN Card Number <span className="text-danger">*</span></label>
-                            <input 
-                              type="text" 
-                              className={`form-control ${formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) ? 'is-invalid' : ''}`}
+                            <input
+                              type="text"
+                              className={`form-control ${touched.panNumber && errors.panNumber ? 'is-invalid' : ''}`}
                               id="panNumber"
                               name="panNumber"
                               value={formData.panNumber}
@@ -560,17 +746,15 @@ const LoanApplication = () => {
                               placeholder="e.g., ABCDE1234F"
                               required
                             />
-                            {formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) && 
-                              <div className="invalid-feedback">Please enter a valid PAN number (e.g., ABCDE1234F)</div>
-                            }
+                            {touched.panNumber && errors.panNumber && <div className="invalid-feedback">{errors.panNumber}</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
                           <div className="mb-3">
                             <label htmlFor="aadhaarNumber" className="form-label">Aadhaar Number (last 4 digits) <span className="text-danger">*</span></label>
-                            <input 
-                              type="text" 
-                              className={`form-control ${formData.aadhaarNumber && !/^[0-9]{4}$/.test(formData.aadhaarNumber) ? 'is-invalid' : ''}`}
+                            <input
+                              type="text"
+                              className={`form-control ${touched.aadhaarNumber && errors.aadhaarNumber ? 'is-invalid' : ''}`}
                               id="aadhaarNumber"
                               name="aadhaarNumber"
                               value={formData.aadhaarNumber}
@@ -580,13 +764,11 @@ const LoanApplication = () => {
                               maxLength="4"
                               required
                             />
-                            {formData.aadhaarNumber && !/^[0-9]{4}$/.test(formData.aadhaarNumber) && 
-                              <div className="invalid-feedback">Please enter the last 4 digits of your Aadhaar number</div>
-                            }
+                            {touched.aadhaarNumber && errors.aadhaarNumber && <div className="invalid-feedback">{errors.aadhaarNumber}</div>}
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="alert alert-info d-flex">
                         <div className="me-3">
                           <FileText size={24} className="text-primary" />
@@ -604,17 +786,17 @@ const LoanApplication = () => {
                           </p>
                         </div>
                       </div>
-                      
+                     
                       <div className="d-flex justify-content-between mt-4">
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="btn btn-outline-primary px-4"
                           onClick={handlePrev}
                         >
                           Back
                         </button>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="btn btn-primary px-4"
                           onClick={handleNext}
                         >
@@ -623,12 +805,12 @@ const LoanApplication = () => {
                       </div>
                     </div>
                   )}
-                  
+                 
                   {/* Step 3: Review & Submit */}
                   {activeStep === 3 && (
                     <div>
                       <h4 className="mb-4">Review & Submit Application</h4>
-                      
+                     
                       <div className="card mb-4">
                         <div className="card-header bg-light">
                           <h5 className="mb-0">Loan Details</h5>
@@ -674,7 +856,7 @@ const LoanApplication = () => {
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="card mb-4">
                         <div className="card-header bg-light">
                           <h5 className="mb-0">Personal Details</h5>
@@ -736,7 +918,7 @@ const LoanApplication = () => {
                           </div>
                         </div>
                       </div>
-                      
+                     
                       <div className="alert alert-warning d-flex mb-4">
                         <div className="me-3">
                           <AlertCircle size={24} className="text-warning" />
@@ -749,11 +931,11 @@ const LoanApplication = () => {
                           </p>
                         </div>
                       </div>
-                      
+                     
                       <div className="form-check mb-4">
-                        <input 
-                          className="form-check-input" 
-                          type="checkbox" 
+                        <input
+                          className={`form-check-input ${errors.agreeTerms ? 'is-invalid' : ''}`}
+                          type="checkbox"
                           id="agreeTerms"
                           name="agreeTerms"
                           checked={formData.agreeTerms}
@@ -761,22 +943,23 @@ const LoanApplication = () => {
                           required
                         />
                         <label className="form-check-label" htmlFor="agreeTerms">
-                          I agree to the terms and conditions, and authorize {loan.bank} to verify my information with 
-                          credit bureaus and other sources. I understand that the final loan approval and disbursement 
+                          I agree to the terms and conditions, and authorize {loan.bank} to verify my information with
+                          credit bureaus and other sources. I understand that the final loan approval and disbursement
                           are subject to verification of documents and credit assessment.
                         </label>
+                        {errors.agreeTerms && <div className="invalid-feedback">{errors.agreeTerms}</div>}
                       </div>
-                      
+                     
                       <div className="d-flex justify-content-between mt-4">
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="btn btn-outline-primary px-4"
                           onClick={handlePrev}
                         >
                           Back
                         </button>
-                        <button 
-                          type="submit" 
+                        <button
+                          type="submit"
                           className="btn btn-primary px-4"
                           disabled={!formData.agreeTerms}
                         >
