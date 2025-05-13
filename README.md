@@ -1,6 +1,6 @@
 # FIERCE Finance 💸 | AI-Powered Financial Inclusion
 
-# [🎬 WATCH OUR DEMO VIDEO]([https://drive.google.com/file/d/1r21iLgDHZkUhy_ewM_MVyDKU8qDFdo69/view?usp=sharing](https://drive.google.com/file/d/1GUMGba6go1wGG4DiZoZxra-ABHYPKnUp/view?usp=sharing))
+# [🎬 WATCH OUR DEMO VIDEO](https://drive.google.com/file/d/1GUMGba6go1wGG4DiZoZxra-ABHYPKnUp/view?usp=sharing)
 
 **FIERCE Finance** is an AI-powered credit scoring platform designed to bring **financial inclusion** to millions of rural and informal workers in India who are traditionally excluded from formal credit systems.
 ---
