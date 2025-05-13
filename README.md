@@ -46,5 +46,5 @@ FIERCE Finance introduces an **AI-driven platform** that:
 - **Patel Om**
 - **Parmar Vanraj**
 
-Hackathon Submission: **FIERCE Hackathon | Theme – AI + Finance Inclusion**
+Hackathon Submission: **FIERCE Hackathon | Theme – AI + Finance**
 > **"FIERCE Finance – Enabling Smart Credit for the Underserved."**
